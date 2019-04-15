@@ -22,15 +22,15 @@ CANVAS_SIZE = (scale * 200,scale * 300,3)
 
 
 dance_type = 'C'
-index = 3
+index = 1
 
 root_dir = '../data/DANCE_%c_%d/' %(dance_type,index)
 
-pred_path = root_dir + 'output.json'
+pred_path = root_dir + 'output3.json'
 audio_path = root_dir +'audio.mp3'
 target_path = root_dir +'skeletons.json'
 pred_video = root_dir +'output.mp4'
-# pred_video2 = root_dir +'output.mp4'
+pred_video2 = root_dir +'output3.mp4'
 config_path = root_dir +'config.json'
 tempo_path = root_dir+'temporal_features.npy'
 
@@ -196,7 +196,7 @@ if __name__ == '__main__':
         print('Analyzed the audio, found a period of %.02f seconds' % sub.duration)
         video = VideoFileClip(pred_video, audio=False)
         video = video.set_audio(sub)
-        video.write_videofile(pred_video)
+        video.write_videofile(pred_video2)
         pass
     # with open(input_path2,'r') as fin:
     #     data2 = json.load(fin)

@@ -362,7 +362,7 @@ def test(test_sample_dir, acoustic_features_scaler, motion_features_scaler):
                 predict_real_motion_features[i][j] += center[i]
 
     data = dict()
-    output_json_fn = os.path.join(test_sample_dir, 'output.json')
+    output_json_fn = os.path.join(test_sample_dir, 'output3.json')
     data['length'] = len(predict_real_motion_features)
     data['center'] = center
     data['skeletons'] = predict_real_motion_features.tolist()
@@ -407,6 +407,6 @@ if __name__ == '__main__':
         val_motion_features = motion_features_scaler.transform(val_motion_features)
         train(acoustic_features,val_acoustic_features, motion_features,val_motion_features, temporal_features, val_temporal_features)
     else:
-        test(test_dirs[2], acoustic_features_scaler, motion_features_scaler)
+        test(test_dirs[0], acoustic_features_scaler, motion_features_scaler)
 
     pass
