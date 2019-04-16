@@ -22,22 +22,23 @@ continue_train = False
 
 
 if continue_train or not is_train:
-    last_epoch = 6000
+    last_epoch = 4999
 model_name = 'LSTM-AE'
-threshold = 0.03
+threshold = 0.06
 # model_name = 'LSTM'
 # Feature processing
-with_tempo_features = False  # with tempo features
-with_rotate = False
+with_tempo_normalized = True
+with_tempo_features = True  # with tempo features
+with_rotate = True
 with_centering = False
-with_leaky_relu = False
+with_leaky_relu = True
 with_ortho_init = True
-with_masking = False
+with_masking = True
 one_sample_train = False
 
 if model_name == 'LSTM-AE':
     with_tempo_features = True
-    with_masking = False
+    with_masking = True
 
 """
 shared_parameters among Models
@@ -53,7 +54,7 @@ train_batch_size = 10
 valid_batch_size = 1
 test_batch_size = 1
 num_workers = 2
-max_epech = 5000
+max_epech = 10000
 reduce_size = 10
 """
 """
@@ -73,7 +74,8 @@ post_fix = model_name+("_rotate" if with_rotate else "")\
            +("_Temporal" if with_tempo_features else "")\
            +("_OneSample" if one_sample_train else "")\
            +("_InputSize_%d" % acoustic_size)\
-           +("_Seq_%d")%seq_len
+           +("_Seq_%d")%seq_len\
+           +("_TempoNor" if with_tempo_normalized else "")
 if model_name == 'LSTM-AE':
     post_fix = post_fix\
            +("_Threshold_%.3f"%threshold) \
@@ -139,6 +141,7 @@ def create_model(model_name):
     elif model_name == 'LSTM-AE':
         model = lstm.LSTM_AE(
             input_size = acoustic_size,
+
             reduced_size=reduce_size,
             output_size=69,
             fc1_hidden_size= 24,
@@ -149,7 +152,6 @@ def create_model(model_name):
             pred_rnn_hidden_size= 32,
             num_layers= 3,
             with_masking=with_masking,
-
         ).to(device)
         if with_ortho_init:
             orthogonal_init(model.encoder_rnn)

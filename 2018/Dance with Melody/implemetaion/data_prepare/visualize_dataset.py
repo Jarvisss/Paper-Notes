@@ -9,7 +9,7 @@ from moviepy.video import  VideoClip
 from data_prepare.feature_extract import rotate_skeleton
 
 fourcc = cv2.VideoWriter_fourcc('m','p','4','v')
-to_video = False
+to_video = True
 show_ground_truth = True
 show_pred = True
 show_bones = 21
@@ -27,7 +27,10 @@ index = 1
 
 root_dir = '../data/DANCE_%c_%d/' %(dance_type,index)
 
-model_name = 'LSTM_OrthoInit_InputSize_50_Seq_120'
+model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_Threshold_0.015_Masking_Reduced_10'
+# model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_Threshold_0.030_Masking_Reduced_10'
+# model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_Threshold_0.045_Masking_Reduced_10'
+# model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_Threshold_0.030_Reduced_10'
 
 pred_path = root_dir + '%s.json' % model_name
 audio_path = root_dir +'audio.mp3'

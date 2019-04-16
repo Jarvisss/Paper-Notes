@@ -59,7 +59,7 @@ class LSTM_AE(nn.Module):
         super(LSTM_AE, self).__init__()
         self.acoustic_features = input_size
         self.with_masking = with_masking
-        self.temporal_features = 3
+        self.temporal_features = 0
         self.hidden_size = encoder_rnn_hidden_size
         self.num_layers = num_layers
         # self.rnn = nn.GRU(input_size, hidden_size, num_layers, batch_first=True, dropout=0.2)
@@ -88,8 +88,8 @@ class LSTM_AE(nn.Module):
 
     def forward(self, x):
         x_ac = x[:,:,:self.acoustic_features]
-        x_tempo = x[:,:, -self.temporal_features:]
-
+        x_tempo = x[:,:, 0:0]
+        beat = x[:,:, -2]
         encoder_fc_out = self.encoder_fc(x_ac)
         encoder_rnn_in = torch.cat((encoder_fc_out, x_tempo), dim=2)
         # Set initial hidden and cell states
@@ -98,7 +98,7 @@ class LSTM_AE(nn.Module):
         encoder_out = self.encoder_fc2(encoder_rnn_out)
 
         if(self.with_masking):
-            mask = x_tempo[:,:,1] # beat frame
+            mask = beat # beat frame
             for i in range(encoder_out.shape[-1]):
                 encoder_out[:,:,i] = encoder_out[:,:,i].mul_(mask)
 
