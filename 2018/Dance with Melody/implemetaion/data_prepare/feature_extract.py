@@ -10,10 +10,6 @@ import math
 from sklearn.preprocessing import StandardScaler
 
 
-
-CANVAS_SIZE = (400,600,3)
-
-
 """
 hyper-parameters for music data
 """
@@ -171,7 +167,7 @@ def rotate_skeleton(frames):
 
         for j in range(len(this_frame)):
             frames[i][j] =  rotate_one_skeleton_by_axis(this_frame[j], axis, theta)
-            frames[i][j] =  rotate_one_skeleton_by_axis(this_frame[j], axis, math.pi/2) # turn to y- axis
+            frames[i][j] =  rotate_one_skeleton_by_axis(this_frame[j], axis, -math.pi/2) # turn to y- axis
 
     return frames
 
