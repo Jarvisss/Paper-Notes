@@ -15,24 +15,24 @@ import os
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-is_train = True
+# is_train = True
 continue_train = False
 # continue_train = True
-# is_train = False
+is_train = False
 
 
 if continue_train or not is_train:
-    last_epoch = 6000
-model_name = 'LSTM-AutoEncoder'
+    last_epoch = 4999
+# model_name = 'LSTM-AutoEncoder'
 threshold = 0.03
-# model_name = 'LSTM'
+model_name = 'LSTM'
 # Feature processing
-with_tempo_features = True  # with tempo features
-with_rotate = True
+with_tempo_features = False  # with tempo features
+with_rotate = False
 with_centering = False
-with_leaky_relu = True
+with_leaky_relu = False
 with_ortho_init = True
-with_masking = True
+with_masking = False
 one_sample_train = False
 
 if model_name == 'LSTM-AutoEncoder':
@@ -322,11 +322,14 @@ def test(test_sample_dir, acoustic_features_scaler, motion_features_scaler):
     if with_tempo_features:
         test_acoustic_features = np.hstack((test_acoustic_features, temporal_indexes))
 
-    # num_test_seq = int(len(test_acoustic_features) / seq_len)
-    # test_acoustic_features = test_acoustic_features[:num_test_seq * seq_len, :].reshape(num_test_seq, seq_len, -1)
-    # test_motion_features = test_motion_features[:num_test_seq * seq_len, :].reshape(num_test_seq, seq_len, -1)
+    num_test_seq = int(len(test_acoustic_features) / seq_len)
+    test_acoustic_features = test_acoustic_features[:num_test_seq * seq_len, :].reshape(num_test_seq, seq_len, -1)
+    test_motion_features = test_motion_features[:num_test_seq * seq_len, :].reshape(num_test_seq, seq_len, -1)
 
     print("shape:{0}".format(test_acoustic_features.shape))
+
+
+
     model_path = os.path.join(ck_dir, model_name + "_epoch_%d.pth"%last_epoch)
     print("model load from %s" % model_path)
     checkpoint = torch.load(model_path)
@@ -334,11 +337,12 @@ def test(test_sample_dir, acoustic_features_scaler, motion_features_scaler):
     model.load_state_dict(checkpoint['net'])
     model.eval()
 
-    test_dataset = TensorDataset(torch.from_numpy(test_acoustic_features[np.newaxis,:]), torch.from_numpy(test_motion_features[np.newaxis,:]))
+    # test_dataset = TensorDataset(torch.from_numpy(test_acoustic_features[np.newaxis,:]), torch.from_numpy(test_motion_features[np.newaxis,:]))
+    test_dataset = TensorDataset(torch.from_numpy(test_acoustic_features), torch.from_numpy(test_motion_features))
     test_dataloader = DataLoader(dataset=test_dataset,
                                  batch_size=test_batch_size,
                                   shuffle=False,
-                                  drop_last=True,
+                                  drop_last=False,
                                   num_workers=num_workers)
 
     criterion = nn.MSELoss()
@@ -350,12 +354,17 @@ def test(test_sample_dir, acoustic_features_scaler, motion_features_scaler):
             batch_x, batch_y = batch_x.to(device), batch_y.to(device)
             output = model(batch_x)
             if model_name == 'LSTM-AutoEncoder':
-                loss = criterion(output[1], batch_y)
+                # loss = criterion(output[1], batch_y)
                 output = np.reshape(output[1].detach().cpu().numpy(), newshape=[-1, motion_size])
+                batch_y = np.reshape(batch_y.detach().cpu().numpy(), newshape=[-1, motion_size])
+
             else:
-                loss = criterion(output, batch_y)
+                # loss = criterion(output, batch_y)
                 output = np.reshape(output.detach().cpu().numpy(), newshape=[-1, motion_size])
-            loss_data = loss.detach().cpu().numpy()
+                batch_y = np.reshape(batch_y.detach().cpu().numpy(), newshape=[-1, motion_size])
+
+                # output = output.detach().cpu().numpy()
+            # loss_data = loss.detach().cpu().numpy()
 
 
             predict_motion_features = np.append(predict_motion_features, output,axis=0)
