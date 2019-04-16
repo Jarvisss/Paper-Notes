@@ -50,6 +50,7 @@ class SimpleRNN(nn.Module):
         cell = Variable(next(self.parameters()).data.new(self.num_layers,batch_size, self.hidden_size), requires_grad=False)
         return hidden.zero_(), cell.zero_()
 
+
 class LSTM_AE(nn.Module):
     def __init__(self, input_size,output_size,reduced_size,
                  fc1_hidden_size,fc2_hidden_size,fc3_hidden_size,

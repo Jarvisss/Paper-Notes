@@ -14,7 +14,7 @@ import os
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-
+torch.cuda.set_device(3)
 is_train = True
 continue_train = False
 # continue_train = True
@@ -23,7 +23,7 @@ continue_train = False
 
 if continue_train or not is_train:
     last_epoch = 6000
-model_name = 'LSTM-AutoEncoder'
+model_name = 'LSTM-AE'
 threshold = 0.03
 # model_name = 'LSTM'
 # Feature processing
@@ -32,12 +32,11 @@ with_rotate = True
 with_centering = False
 with_leaky_relu = True
 with_ortho_init = True
-with_masking = True
 one_sample_train = False
 
-if model_name == 'LSTM-AutoEncoder':
+if model_name == 'LSTM-AE':
     with_tempo_features = True
-    with_masking = True
+    with_masking = False
 
 """
 shared_parameters among Models
@@ -68,15 +67,17 @@ num_layers = 3  # 3 LSTM cells per time step
 
 
 post_fix = model_name+("_rotate" if with_rotate else "")\
-           +("_OrthoInit" if with_ortho_init else "")\
-           +("_LeakyRelu" if with_leaky_relu else "")\
+           +("_Ortho" if with_ortho_init else "")\
+           +("_Leaky" if with_leaky_relu else "")\
            +("_Temporal" if with_tempo_features else "")\
-           +("_OneSampleTrain" if one_sample_train else "")\
+           +("_OneSample" if one_sample_train else "")\
            +("_InputSize_%d" % acoustic_size)\
-           +("_Seq_%d")%seq_len\
-           +("_Threshold_%.2f"%threshold if model_name=='LSTM-AutoEncoder' else "") \
-           +("_Masking" if model_name == 'LSTM-AutoEncoder' and with_masking else "") \
-           +("_Reduced_%d" % reduce_size if model_name == 'LSTM-AutoEncoder' else "") \
+           +("_Seq_%d")%seq_len
+if model_name == 'LSTM-AE':
+    post_fix = post_fix\
+           +("_Threshold_%.3f"%threshold) \
+           +("_Masking" if with_masking else "") \
+           +("_Reduced_%d" % reduce_size )
 
 # print(device)
 data_dir = "../data/"
@@ -134,7 +135,7 @@ def create_model(model_name):
 
         pass
 
-    elif model_name == 'LSTM-AutoEncoder':
+    elif model_name == 'LSTM-AE':
         model = lstm.LSTM_AE(
             input_size = acoustic_size,
             reduced_size=reduce_size,
@@ -262,7 +263,7 @@ def train(acoustic_features,val_acoustic_features, motion_features,val_motion_fe
             batch_acoustic_features = batch_x[:,:, :acoustic_size]
             optimizer.zero_grad()
             output = model(batch_x)
-            if model_name == 'LSTM-AutoEncoder':
+            if model_name == 'LSTM-AE':
                 loss1 = torch.max(
                     torch.DoubleTensor([threshold]).to(device),
                     loss_Ae(output[0], batch_acoustic_features)
@@ -274,7 +275,7 @@ def train(acoustic_features,val_acoustic_features, motion_features,val_motion_fe
             loss.backward()
             optimizer.step()
             epoch_train_loss += loss.item()
-            if model_name == 'LSTM-AutoEncoder':
+            if model_name == 'LSTM-AE':
                 epoch_train_auto_loss += loss1.item()
                 epoch_train_pred_loss += loss2.item()
 
@@ -283,7 +284,7 @@ def train(acoustic_features,val_acoustic_features, motion_features,val_motion_fe
                 batch_x, batch_y = Variable(batch_x).to(device), Variable(batch_y).to(device)
                 batch_acoustic_features = batch_x[:, :, :acoustic_size]
                 output = model(batch_x)
-                if model_name == 'LSTM-AutoEncoder':
+                if model_name == 'LSTM-AE':
                     loss4 = torch.max(
                         torch.DoubleTensor([threshold]).to(device),
                         loss_Ae(output[0], batch_acoustic_features)
@@ -349,7 +350,7 @@ def test(test_sample_dir, acoustic_features_scaler, motion_features_scaler):
             batch_x, batch_y = Variable(batch_x), Variable(batch_y)
             batch_x, batch_y = batch_x.to(device), batch_y.to(device)
             output = model(batch_x)
-            if model_name == 'LSTM-AutoEncoder':
+            if model_name == 'LSTM-AE':
                 loss = criterion(output[1], batch_y)
                 output = np.reshape(output[1].detach().cpu().numpy(), newshape=[-1, motion_size])
             else:
