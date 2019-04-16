@@ -10,10 +10,6 @@ import math
 from sklearn.preprocessing import StandardScaler
 
 
-
-CANVAS_SIZE = (400,600,3)
-
-
 """
 hyper-parameters for music data
 """

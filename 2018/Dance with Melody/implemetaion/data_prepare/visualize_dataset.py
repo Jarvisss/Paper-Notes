@@ -9,7 +9,7 @@ from moviepy.video import  VideoClip
 from data_prepare.feature_extract import rotate_skeleton
 
 fourcc = cv2.VideoWriter_fourcc('m','p','4','v')
-to_video = True
+to_video = False
 show_ground_truth = True
 show_pred = True
 show_bones = 21
@@ -19,7 +19,7 @@ bone_pred_color = (255, 0, 0)
 bone_target_color = (0, 0, 255)
 fps = 25
 scale = 3
-CANVAS_SIZE = (scale * 200,scale * 300,3)
+CANVAS_SIZE = (scale * 300,scale * 200,3)
 
 
 dance_type = 'C'
@@ -39,22 +39,22 @@ tempo_path = root_dir+'temporal_features.npy'
 
 
 def draw_hints(cvs):
-    cv2.putText(cvs, 'Prediction' , (CANVAS_SIZE[1]//4 - scale * 25,  scale * 15), cv2.FONT_ITALIC, scale * 0.3, bone_pred_color, 1,
+    cv2.putText(cvs, 'Prediction' , (CANVAS_SIZE[0]//4 - scale * 25,  scale * 15), cv2.FONT_ITALIC, scale * 0.3, bone_pred_color, 1,
                 False)
-    cv2.putText(cvs, 'Ground Truth' , (CANVAS_SIZE[1]*3//4 - scale * 25, scale * 15), cv2.FONT_ITALIC, scale * 0.3, bone_target_color, 1,
+    cv2.putText(cvs, 'Ground Truth' , (CANVAS_SIZE[0]*3//4 - scale * 25, scale * 15), cv2.FONT_ITALIC, scale * 0.3, bone_target_color, 1,
                 False)
 
 def draw_beat(cvs, this_beat):
-    cv2.putText(cvs, 'frame:' + str(int(this_beat[0])), (10, CANVAS_SIZE[0] - 10), cv2.FONT_ITALIC, scale * 0.3, (0, 0, 255), 1,
+    cv2.putText(cvs, 'frame:' + str(int(this_beat[0])), (scale * 3, CANVAS_SIZE[1] - scale * 3), cv2.FONT_ITALIC, scale * 0.3, (0, 0, 255), 1,
                 False)
-    cv2.putText(cvs, 'beat:' + str(int(this_beat[1])), (10, CANVAS_SIZE[0] - 30), cv2.FONT_ITALIC, scale * 0.3, (0, 0, 255), 1,
+    cv2.putText(cvs, 'beat:' + str(int(this_beat[1])), (scale * 3, CANVAS_SIZE[1] - scale * 9), cv2.FONT_ITALIC, scale * 0.3, (0, 0, 255), 1,
                 False)
-    cv2.putText(cvs, 'in beat frame:' + str(int(this_beat[2])), (10, CANVAS_SIZE[0] - 50), cv2.FONT_ITALIC, scale * 0.3,
+    cv2.putText(cvs, 'in beat frame:' + str(int(this_beat[2])), (scale * 3, CANVAS_SIZE[1] - scale * 15), cv2.FONT_ITALIC, scale * 0.3,
                 (0, 0, 255), 1, False)
 
 def draw_skeleton_number(cvs, frame):
     for j in range(show_bones):
-        cv2.putText(cvs, str(j), (int(frame[j][0]), (CANVAS_SIZE[0] - int(frame[j][1]))), cv2.FONT_ITALIC, scale * 0.3,
+        cv2.putText(cvs, str(j), (int(frame[j][0]), (CANVAS_SIZE[1] - int(frame[j][1]))), cv2.FONT_ITALIC, scale * 0.3,
                     (0, 0, 255), 1, False)
 
 def draw_skeleton(cvs, frame, bone_color, skeleton_color,):
@@ -95,16 +95,16 @@ def draw(frames,center, video_path, tempo_path, target_frames=None):
     # rotate_skeleton(target_frames)
     frames[:, :, 0] *= scale
     frames[:, :, 1] *= scale
-    frames[:,:,0] += CANVAS_SIZE[1]//4
-    frames[:,:,1] += CANVAS_SIZE[0]//2
+    frames[:,:,0] += CANVAS_SIZE[0]//4
+    frames[:,:,1] += CANVAS_SIZE[1]//2
     # center[:,0] += CANVAS_SIZE[1]//2
     # center[:,1] += CANVAS_SIZE[0]//2
     # rotate_skeleton(target_frames)
     if target_frames is not None:
         target_frames[:, :, 0] *= scale
         target_frames[:, :, 1] *= scale
-        target_frames[:, :, 0] += CANVAS_SIZE[1] * 3 // 4
-        target_frames[:, :, 1] += CANVAS_SIZE[0] // 2
+        target_frames[:, :, 0] += CANVAS_SIZE[0] * 3 // 4
+        target_frames[:, :, 1] += CANVAS_SIZE[1] // 2
 
 
         if len(target_frames) > len(frames):
@@ -113,10 +113,10 @@ def draw(frames,center, video_path, tempo_path, target_frames=None):
     
     
     tempo = np.load(tempo_path)
-    video = cv2.VideoWriter(video_path, fourcc, fps, (CANVAS_SIZE[1],CANVAS_SIZE[0]), 1)
+    video = cv2.VideoWriter(video_path, fourcc, fps, (CANVAS_SIZE[0],CANVAS_SIZE[1]), 1)
     image_seq = []
     for i in range(len(frames)):
-        cvs = np.ones(CANVAS_SIZE)
+        cvs = np.ones((CANVAS_SIZE[1], CANVAS_SIZE[0], CANVAS_SIZE[2]))
         cvs[:,:,:] = 255
 
 
