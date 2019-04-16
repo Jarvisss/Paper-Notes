@@ -12,40 +12,39 @@ import numpy as np
 import json
 import os
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# is_train = True
-# continue_train = False
-continue_train = True
-is_train = False
+
+is_train = True
+continue_train = False
+# continue_train = True
+# is_train = False
 
 
 if continue_train or not is_train:
-    last_epoch = 4999
-# model_name = 'LSTM-AutoEncoder'
+    last_epoch = 6000
+model_name = 'LSTM-AutoEncoder'
 threshold = 0.03
-model_name = 'LSTM'
+# model_name = 'LSTM'
 # Feature processing
 with_tempo_features = True  # with tempo features
-with_rotate = False
+with_rotate = True
 with_centering = False
-with_leaky_relu = False
+with_leaky_relu = True
 with_ortho_init = True
-with_masking = False
+with_masking = True
 one_sample_train = False
 
 if model_name == 'LSTM-AutoEncoder':
     with_tempo_features = True
     with_masking = True
 
-
-input_size = 50
-fc1_size = 64
+"""
+shared_parameters among Models
+"""
+acoustic_size = 50
 temporal_size = 3
-hidden_size = 80
-output_size = 23*3
-num_layers = 3  # 3 LSTM cells per time step
-
-
+motion_size = 23 * 3
 lr = 0.001
 beta1 = 0.9
 beta2 = 0.999
@@ -55,8 +54,16 @@ valid_batch_size = 1
 test_batch_size = 1
 num_workers = 2
 max_epech = 5000
+reduce_size = 10
+"""
+"""
 
-
+"""
+LSTM model parameters
+"""
+hidden_size = 80
+fc1_size = 64
+num_layers = 3  # 3 LSTM cells per time step
 
 
 
@@ -65,14 +72,16 @@ post_fix = model_name+("_rotate" if with_rotate else "")\
            +("_LeakyRelu" if with_leaky_relu else "")\
            +("_Temporal" if with_tempo_features else "")\
            +("_OneSampleTrain" if one_sample_train else "")\
-           +("_InputSize_%d"%input_size)\
+           +("_InputSize_%d" % acoustic_size)\
            +("_Seq_%d")%seq_len\
-           +("_Threshold_%f"%threshold if model_name=='LSTM-AutoEncoder' else "")
+           +("_Threshold_%.2f"%threshold if model_name=='LSTM-AutoEncoder' else "") \
+           +("_Masking" if model_name == 'LSTM-AutoEncoder' and with_masking else "") \
+           +("_Reduced_%d" % reduce_size if model_name == 'LSTM-AutoEncoder' else "") \
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # print(device)
 data_dir = "../data/"
 ck_dir= "../checkpoints/" + post_fix +"/"
+output_json = post_fix+'.json'
 if not os.path.exists(ck_dir):
     os.makedirs(ck_dir)
 
@@ -83,13 +92,13 @@ def load_features_from_dir(data_dir):
     motion_features = motion_feature_extract(data_dir, with_rotate=with_rotate, with_centering=with_centering)  # [n_samples, n_motion_features]
     return acoustic_features,temporal_indexes, motion_features[:acoustic_features.shape[0],:]
 
-def load_train_features_and_scaler(train_dirs):
+def load_train_features_and_scaler(train_dirs, acoustic_size, temporal_size, output_size, acoustic_scaler=MinMaxScaler(), motion_scaler=MinMaxScaler() ):
     print("\n...Feature extracting...\n")
-    train_acoustic_features = np.empty([0,input_size])
+    train_acoustic_features = np.empty([0,acoustic_size])
     train_temporal_features = np.empty([0,temporal_size])
     train_motion_features = np.empty([0,output_size])
-    train_acoustic_scaler = MinMaxScaler()
-    train_motion_scaler = MinMaxScaler()
+    train_acoustic_scaler = acoustic_scaler
+    train_motion_scaler = motion_scaler
 
     for one_dir in train_dirs:
         acoustic_features,temporal_indexes, motion_features = load_features_from_dir(one_dir)
@@ -107,15 +116,16 @@ def load_train_features_and_scaler(train_dirs):
     pass
 
 
+
 def create_model(model_name):
     if model_name == 'LSTM':
         model = lstm.SimpleRNN(
 
-            input_size=input_size,
+            input_size=acoustic_size,
             fc1_size=fc1_size,
             hidden_size=hidden_size,
             num_layers=num_layers,
-            output_size=output_size,
+            output_size=motion_size,
             device=device,
             with_tempo=with_tempo_features,
             is_leaky_relu=with_leaky_relu).to(device)
@@ -126,8 +136,8 @@ def create_model(model_name):
 
     elif model_name == 'LSTM-AutoEncoder':
         model = lstm.LSTM_AE(
-            input_size = input_size,
-            reduced_size=5,
+            input_size = acoustic_size,
+            reduced_size=reduce_size,
             output_size=69,
             fc1_hidden_size= 24,
             fc2_hidden_size= 24,
@@ -153,9 +163,9 @@ def create_model(model_name):
     return model
 
 def load_valid_features(valid_dirs):
-    valid_acoustic_features = np.empty([0, input_size])
+    valid_acoustic_features = np.empty([0, acoustic_size])
     valid_temporal_features = np.empty([0,temporal_size])
-    valid_motion_features = np.empty([0, output_size])
+    valid_motion_features = np.empty([0, motion_size])
     for one_dir in valid_dirs:
         acoustic_features, temporal_indexes, motion_features = load_features_from_dir(one_dir)
         # [n_samples, n_acoustic_features]
@@ -249,7 +259,7 @@ def train(acoustic_features,val_acoustic_features, motion_features,val_motion_fe
         for i, (batch_x, batch_y) in enumerate(train_dataloader):
             # print("{0},{1}".format(batch_x.shape,batch_y.shape))
             batch_x, batch_y = Variable(batch_x).to(device), Variable(batch_y).to(device)
-            batch_acoustic_features = batch_x[:,:,:input_size]
+            batch_acoustic_features = batch_x[:,:, :acoustic_size]
             optimizer.zero_grad()
             output = model(batch_x)
             if model_name == 'LSTM-AutoEncoder':
@@ -271,7 +281,7 @@ def train(acoustic_features,val_acoustic_features, motion_features,val_motion_fe
         with torch.no_grad():
             for i, (batch_x, batch_y) in enumerate(valid_dataloader):
                 batch_x, batch_y = Variable(batch_x).to(device), Variable(batch_y).to(device)
-                batch_acoustic_features = batch_x[:, :, :input_size]
+                batch_acoustic_features = batch_x[:, :, :acoustic_size]
                 output = model(batch_x)
                 if model_name == 'LSTM-AutoEncoder':
                     loss4 = torch.max(
@@ -332,7 +342,7 @@ def test(test_sample_dir, acoustic_features_scaler, motion_features_scaler):
                                   num_workers=num_workers)
 
     criterion = nn.MSELoss()
-    predict_motion_features = np.empty([0, output_size])
+    predict_motion_features = np.empty([0, motion_size])
     with torch.no_grad():
         for i, (batch_x, batch_y) in enumerate(test_dataloader):
 
@@ -341,17 +351,17 @@ def test(test_sample_dir, acoustic_features_scaler, motion_features_scaler):
             output = model(batch_x)
             if model_name == 'LSTM-AutoEncoder':
                 loss = criterion(output[1], batch_y)
-                output = np.reshape(output[1].detach().cpu().numpy(), newshape=[-1, output_size])
+                output = np.reshape(output[1].detach().cpu().numpy(), newshape=[-1, motion_size])
             else:
                 loss = criterion(output, batch_y)
-                output = np.reshape(output.detach().cpu().numpy(), newshape=[-1, output_size])
+                output = np.reshape(output.detach().cpu().numpy(), newshape=[-1, motion_size])
             loss_data = loss.detach().cpu().numpy()
 
 
             predict_motion_features = np.append(predict_motion_features, output,axis=0)
 
     predict_real_motion_features = motion_features_scaler.inverse_transform(predict_motion_features)
-    predict_real_motion_features = np.reshape(predict_real_motion_features, newshape=[-1, output_size//3, 3])
+    predict_real_motion_features = np.reshape(predict_real_motion_features, newshape=[-1, motion_size // 3, 3])
 
 
     center = load_skeleton(os.path.join(test_sample_dir, 'skeletons.json'))[1][:len(predict_real_motion_features)]
@@ -362,7 +372,7 @@ def test(test_sample_dir, acoustic_features_scaler, motion_features_scaler):
                 predict_real_motion_features[i][j] += center[i]
 
     data = dict()
-    output_json_fn = os.path.join(test_sample_dir, 'output3.json')
+    output_json_fn = os.path.join(test_sample_dir, output_json)
     data['length'] = len(predict_real_motion_features)
     data['center'] = center
     data['skeletons'] = predict_real_motion_features.tolist()
@@ -398,7 +408,10 @@ if __name__ == '__main__':
     ]
 
 
-    acoustic_features, acoustic_features_scaler, motion_features,motion_features_scaler, temporal_features = load_train_features_and_scaler(train_dirs)
+    acoustic_features, acoustic_features_scaler, motion_features,motion_features_scaler, temporal_features = \
+        load_train_features_and_scaler(train_dirs=train_dirs,
+                                       acoustic_size=acoustic_size,temporal_size=temporal_size,output_size=motion_size,
+                                       acoustic_scaler=MinMaxScaler(), motion_scaler=MinMaxScaler())
 
 
     if is_train:

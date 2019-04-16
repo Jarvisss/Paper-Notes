@@ -6,14 +6,15 @@ import subprocess
 import math
 from moviepy.editor import *
 from moviepy.video import  VideoClip
-
+from data_prepare.feature_extract import rotate_skeleton
 
 fourcc = cv2.VideoWriter_fourcc('m','p','4','v')
-to_video = True
+to_video = False
 show_ground_truth = True
+show_pred = True
 show_bones = 21
 skeleton_target_color = (0, 0, 0) # Line color
-skeleton_pred_color = (43, 43, 43) # Line color
+skeleton_pred_color = (0, 0, 0) # Line color
 bone_pred_color = (255, 0, 0)
 bone_target_color = (0, 0, 255)
 fps = 25
@@ -26,46 +27,14 @@ index = 1
 
 root_dir = '../data/DANCE_%c_%d/' %(dance_type,index)
 
-pred_path = root_dir + 'output3.json'
+pred_path = root_dir + 'LSTM-AutoEncoder_rotate_OrthoInit_LeakyRelu_Temporal_InputSize_50_Seq_120_Threshold_0.03_Masking_Reduced_10.json'
 audio_path = root_dir +'audio.mp3'
 target_path = root_dir +'skeletons.json'
 pred_video = root_dir +'output.mp4'
-pred_video2 = root_dir +'output3.mp4'
+pred_video2 = root_dir +'LSTM-AutoEncoder_rotate_OrthoInit_LeakyRelu_Temporal_InputSize_50_Seq_120_Threshold_0.03_Masking_Reduced_10.mp4'
 config_path = root_dir +'config.json'
 tempo_path = root_dir+'temporal_features.npy'
 
-def rotate_one_skeleton_by_axis(skeleton, axis, angle):
-    delta_x = skeleton[0] - axis[0]
-    delta_z = skeleton[2] - axis[2]
-    skeleton_new = skeleton
-    skeleton_new[0] = delta_x * math.cos(angle) + delta_z * math.sin(angle)
-    skeleton_new[2] = -delta_x * math.sin(angle) + delta_z * math.cos(angle)
-
-
-    return skeleton_new
-
-def rotate_skeleton(frames):
-
-    frames = np.asarray(frames)
-
-    for i in range(len(frames)):
-        this_frame = frames[i]
-        waist_lf = this_frame[16]
-        waist_rt = this_frame[7]
-
-        axis = this_frame[2]
-
-        lf = waist_lf - axis
-        rt = waist_rt - axis
-        mid = lf+rt
-
-        theta = math.atan2(mid[0], mid[2])
-
-        angle = -theta
-        for j in range(len(this_frame)):
-            frames[i][j] =  rotate_one_skeleton_by_axis(this_frame[j], axis, angle)
-
-    return frames
 
 def draw_beat(cvs, this_beat):
     cv2.putText(cvs, 'frame:' + str(int(this_beat[0])), (10, CANVAS_SIZE[0] - 10), cv2.FONT_ITALIC, 1, (0, 0, 255), 1,
@@ -114,7 +83,7 @@ def draw_skeleton(cvs, frame, bone_color, skeleton_color,):
 def draw(frames, video_path, tempo_path, target_frames=None):
 
 
-    # rotate_skeleton(frames)
+    # rotate_skeleton(target_frames)
     frames[:, :, 0] *= scale
     frames[:, :, 1] *= scale
     frames[:,:,0] += CANVAS_SIZE[1]//2
@@ -147,11 +116,14 @@ def draw(frames, video_path, tempo_path, target_frames=None):
         if target_frames is not None:
             target_frame = target_frames[i]
             draw_skeleton(cvs, target_frame, bone_target_color, skeleton_target_color)
-        draw_skeleton(cvs,frame,bone_pred_color, skeleton_pred_color)
+
+        if show_pred:
+            draw_skeleton(cvs,frame,bone_pred_color, skeleton_pred_color)
 
         ncvs = np.flip(cvs, 0).copy()
-        
-        draw_skeleton_number(ncvs,frame)
+
+        if show_pred:
+            draw_skeleton_number(ncvs,frame)
         if target_frames is not None:
             draw_skeleton_number(ncvs,target_frame)
         draw_beat(ncvs,this_beat)

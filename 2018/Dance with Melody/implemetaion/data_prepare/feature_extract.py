@@ -70,9 +70,9 @@ class Music:
 
         tempogram = librosa.feature.tempogram(win_length=5, onset_envelope=onset_envelope)  # tempogram[5]
 
-        beats = librosa.beat.beat_track(y=self.music_data, sr = self.sr,hop_length=hop_length)
+        tempo,beats = librosa.beat.beat_track(y=self.music_data, sr = self.sr,hop_length=hop_length)
         temporal_indexes_1 = np.array([i for i in range(mel_spectrum.shape[1])])
-        temporal_indexes_2 = np.array([1 if i in set(beats[1]) else 0  for i in range(mel_spectrum.shape[1])])
+        temporal_indexes_2 = np.array([1 if i in set(beats) else 0  for i in range(mel_spectrum.shape[1])])
         temporal_indexes_3 = np.array(temporal_indexes_2.copy())
         in_frame_count=0
         for i in range(len(temporal_indexes_3)):
@@ -84,9 +84,9 @@ class Music:
                 temporal_indexes_3[i] = in_frame_count
                 in_frame_count += 1
 
-        temporal_indexes = np.vstack((temporal_indexes_1[:-beats[1][0]], temporal_indexes_2[beats[1][0]:], temporal_indexes_3[beats[1][0]:]))
+        temporal_indexes = np.vstack((temporal_indexes_1[:-beats[0]], temporal_indexes_2[beats[0]:], temporal_indexes_3[beats[0]:]))
         acoustic_features = np.vstack((mfcc, mfcc_delta, cqt_chroma, tempogram, onset_envelope))
-        acoustic_features = acoustic_features[:, beats[1][0]:]
+        acoustic_features = acoustic_features[:, beats[0]:]
 
         return acoustic_features.transpose(), temporal_indexes.transpose() # feature[16]
 
@@ -167,11 +167,11 @@ def rotate_skeleton(frames):
         rt = waist_rt - axis
         mid = lf+rt
 
-        theta = math.atan2(mid[0], mid[2])
+        theta = math.atan2(mid[2], mid[0]) # from x+ axis
 
-        angle = -theta
         for j in range(len(this_frame)):
-            frames[i][j] =  rotate_one_skeleton_by_axis(this_frame[j], axis, angle)
+            frames[i][j] =  rotate_one_skeleton_by_axis(this_frame[j], axis, theta)
+            frames[i][j] =  rotate_one_skeleton_by_axis(this_frame[j], axis, math.pi/2) # turn to y- axis
 
     return frames
 
