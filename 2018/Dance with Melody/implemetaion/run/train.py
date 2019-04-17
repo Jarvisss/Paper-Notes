@@ -15,16 +15,16 @@ import os
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 torch.cuda.set_device(3)
-is_train = True
-continue_train = False
-# continue_train = True
-# is_train = False
+# is_train = True
+# continue_train = False
+continue_train = True
+is_train = False
 
 
 if continue_train or not is_train:
-    last_epoch = 4999
+    last_epoch = 9140
 model_name = 'LSTM-AE'
-threshold = 0.06
+threshold = 0.1
 # model_name = 'LSTM'
 # Feature processing
 with_tempo_normalized = True
@@ -326,9 +326,9 @@ def test(test_sample_dir, acoustic_features_scaler, motion_features_scaler):
     if with_tempo_features:
         test_acoustic_features = np.hstack((test_acoustic_features, temporal_indexes))
 
-    num_test_seq = int(len(test_acoustic_features) / seq_len)
-    test_acoustic_features = test_acoustic_features[:num_test_seq * seq_len, :].reshape(num_test_seq, seq_len, -1)
-    test_motion_features = test_motion_features[:num_test_seq * seq_len, :].reshape(num_test_seq, seq_len, -1)
+    # num_test_seq = int(len(test_acoustic_features) / seq_len)
+    # test_acoustic_features = test_acoustic_features[:num_test_seq * seq_len, :].reshape(num_test_seq, seq_len, -1)
+    # test_motion_features = test_motion_features[:num_test_seq * seq_len, :].reshape(num_test_seq, seq_len, -1)
 
     print("shape:{0}".format(test_acoustic_features.shape))
     model_path = os.path.join(ck_dir, model_name + "_epoch_%d.pth"%last_epoch)
@@ -339,7 +339,7 @@ def test(test_sample_dir, acoustic_features_scaler, motion_features_scaler):
     model.eval()
 
     # test_dataset = TensorDataset(torch.from_numpy(test_acoustic_features[np.newaxis,:]), torch.from_numpy(test_motion_features[np.newaxis,:]))
-    test_dataset = TensorDataset(torch.from_numpy(test_acoustic_features), torch.from_numpy(test_motion_features))
+    test_dataset = TensorDataset(torch.from_numpy(test_acoustic_features[np.newaxis,]), torch.from_numpy(test_motion_features[np.newaxis,]))
     test_dataloader = DataLoader(dataset=test_dataset,
                                  batch_size=test_batch_size,
                                   shuffle=False,
@@ -430,6 +430,6 @@ if __name__ == '__main__':
         val_motion_features = motion_features_scaler.transform(val_motion_features)
         train(acoustic_features,val_acoustic_features, motion_features,val_motion_features, temporal_features, val_temporal_features)
     else:
-        test(test_dirs[0], acoustic_features_scaler, motion_features_scaler)
+        test(test_dirs[7], acoustic_features_scaler, motion_features_scaler)
 
     pass

@@ -23,11 +23,18 @@ CANVAS_SIZE = (scale * 300,scale * 200,3)
 
 
 dance_type = 'C'
-index = 1
-
+index = 9
+with_rotate = True
 root_dir = '../data/DANCE_%c_%d/' %(dance_type,index)
 
-model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_Threshold_0.015_Masking_Reduced_10'
+# model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_TempoNor_Threshold_0.060_Masking_Reduced_10'
+model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_TempoNor_Threshold_0.100_Masking_Reduced_10'
+# model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_TempoNor_Threshold_0.200_Masking_Reduced_10'
+# model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_TempoNor_Threshold_0.400_Masking_Reduced_10'
+
+
+
+# model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_Threshold_0.015_Masking_Reduced_10'
 # model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_Threshold_0.030_Masking_Reduced_10'
 # model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_Threshold_0.045_Masking_Reduced_10'
 # model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_Threshold_0.030_Reduced_10'
@@ -94,8 +101,8 @@ def draw_skeleton(cvs, frame, bone_color, skeleton_color,):
 
 def draw(frames,center, video_path, tempo_path, target_frames=None):
 
-
-    # rotate_skeleton(target_frames)
+    if with_rotate:
+        rotate_skeleton(target_frames)
     frames[:, :, 0] *= scale
     frames[:, :, 1] *= scale
     frames[:,:,0] += CANVAS_SIZE[0]//4
