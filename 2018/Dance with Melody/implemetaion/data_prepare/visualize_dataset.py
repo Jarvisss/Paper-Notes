@@ -9,6 +9,8 @@ from moviepy.video import  VideoClip
 from data_prepare.feature_extract import rotate_skeleton
 
 fourcc = cv2.VideoWriter_fourcc('m','p','4','v')
+
+with_rotate = True
 to_video = True
 show_ground_truth = True
 show_pred = True
@@ -24,7 +26,6 @@ CANVAS_SIZE = (scale * 300,scale * 200,3)
 
 dance_type = 'C'
 index = 9
-with_rotate = True
 root_dir = '../data/DANCE_%c_%d/' %(dance_type,index)
 
 # model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_TempoNor_Threshold_0.060_Masking_Reduced_10'
