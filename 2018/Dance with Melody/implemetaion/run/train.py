@@ -14,15 +14,15 @@ import os
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-torch.cuda.set_device(3)
-is_train = True
-continue_train = False
-# continue_train = True
-# is_train = False
+torch.cuda.set_device(0)
+# is_train = True
+# continue_train = False
+continue_train = True
+is_train = False
 
 
 if continue_train or not is_train:
-    last_epoch = 4999
+    last_epoch = 6000
 model_name = 'LSTM-AE'
 threshold = 0.06
 # model_name = 'LSTM'
@@ -316,10 +316,11 @@ def train(acoustic_features,val_acoustic_features, motion_features,val_motion_fe
 
 
 
-def test(test_sample_dir, acoustic_features_scaler, motion_features_scaler):
+def test(test_sample_dir, acoustic_features_scaler, motion_features_scaler, tempo_scaler=None):
     print("\n........testing........\n")
     test_acoustic_features, temporal_indexes, test_motion_features = load_features_from_dir(test_sample_dir)
-
+    if tempo_scaler is not None:
+        temporal_indexes = tempo_scaler.transform(temporal_indexes)
     test_acoustic_features = acoustic_features_scaler.transform(test_acoustic_features)
     test_motion_features = motion_features_scaler.transform(test_motion_features)
 
@@ -415,6 +416,7 @@ if __name__ == '__main__':
         "../data/DANCE_C_7",
         "../data/DANCE_C_8",
         "../data/DANCE_C_9",
+
     ]
 
 
@@ -423,13 +425,22 @@ if __name__ == '__main__':
                                        acoustic_size=acoustic_size,temporal_size=temporal_size,output_size=motion_size,
                                        acoustic_scaler=MinMaxScaler(), motion_scaler=MinMaxScaler())
 
+    if with_tempo_normalized:
+        temporal_features_scalar = MinMaxScaler()
+        temporal_features = temporal_features_scalar.fit_transform(temporal_features)
 
     if is_train:
         val_acoustic_features, val_motion_features, val_temporal_features = load_valid_features(valid_dirs)
         val_acoustic_features = acoustic_features_scaler.transform(val_acoustic_features)
+        if with_tempo_normalized:
+            val_temporal_features = temporal_features_scalar.transform(val_temporal_features)
         val_motion_features = motion_features_scaler.transform(val_motion_features)
         train(acoustic_features,val_acoustic_features, motion_features,val_motion_features, temporal_features, val_temporal_features)
     else:
-        test(test_dirs[0], acoustic_features_scaler, motion_features_scaler)
+        if not with_tempo_normalized:
+            test(test_dirs[6], acoustic_features_scaler, motion_features_scaler)
+        else:
+            test(test_dirs[6], acoustic_features_scaler, motion_features_scaler,temporal_features_scalar)
+
 
     pass

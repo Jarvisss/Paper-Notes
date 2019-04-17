@@ -9,6 +9,8 @@ from moviepy.video import  VideoClip
 from data_prepare.feature_extract import rotate_skeleton
 
 fourcc = cv2.VideoWriter_fourcc('m','p','4','v')
+
+with_rotate = True
 to_video = True
 show_ground_truth = True
 show_pred = True
@@ -23,11 +25,13 @@ CANVAS_SIZE = (scale * 300,scale * 200,3)
 
 
 dance_type = 'C'
-index = 1
+index = 8
 
 root_dir = '../data/DANCE_%c_%d/' %(dance_type,index)
 
-model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_Threshold_0.015_Masking_Reduced_10'
+model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_TempoNor_Threshold_0.060_Masking_Reduced_10'
+
+# model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_Threshold_0.015_Masking_Reduced_10'
 # model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_Threshold_0.030_Masking_Reduced_10'
 # model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_Threshold_0.045_Masking_Reduced_10'
 # model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_Threshold_0.030_Reduced_10'
@@ -36,7 +40,7 @@ pred_path = root_dir + '%s.json' % model_name
 audio_path = root_dir +'audio.mp3'
 target_path = root_dir +'skeletons.json'
 pred_video = root_dir +'output.mp4'
-pred_video2 = root_dir +'%s.mp4' % model_name
+pred_video2 = root_dir +'%s_segment.mp4' % model_name
 config_path = root_dir +'config.json'
 tempo_path = root_dir+'temporal_features.npy'
 
@@ -94,8 +98,8 @@ def draw_skeleton(cvs, frame, bone_color, skeleton_color,):
 
 def draw(frames,center, video_path, tempo_path, target_frames=None):
 
-
-    # rotate_skeleton(target_frames)
+    if with_rotate:
+        rotate_skeleton(target_frames)
     frames[:, :, 0] *= scale
     frames[:, :, 1] *= scale
     frames[:,:,0] += CANVAS_SIZE[0]//4
