@@ -1,7 +1,4 @@
-## 生物智能算法 神经网络组
-#### 姓名：陆佳炜 
-#### 学号：21721103
-#### 邮箱：jarvis_lu@zju.edu.cn
+jarvis_lu@zju.edu.cn
 
 ---
 
@@ -106,9 +103,3 @@ Index | Model | Strategy | Result |
 |3 | LSTM+AutoEncoder+masking | Same as 1 | Not converge |  
 |4 | LSTM+AutoEncoder+masking + temporal indexes | Same as 1 | Not converge |  
 |5 | GRU+AutoEncoder+temporal+masking | Same as 1 | Litter better than 4 |  
-
-### 5. 最终报告
-
-[pdf](./final.pdf)
-
-[mp4](./resources/DANCE_C_9.mp4)
