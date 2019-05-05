@@ -25,15 +25,16 @@ CANVAS_SIZE = (scale * 300,scale * 200,3)
 
 
 dance_type = 'C'
-index = 9
+index = 8
 root_dir = '../data/DANCE_%c_%d/' %(dance_type,index)
 
 # model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_TempoNor_Threshold_0.060_Masking_Reduced_10'
-model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_TempoNor_Threshold_0.100_Masking_Reduced_10'
+# model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_TempoNor_Threshold_0.450_Masking_Reduced_10'
 # model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_TempoNor_Threshold_0.200_Masking_Reduced_10'
 # model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_TempoNor_Threshold_0.400_Masking_Reduced_10'
+model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_TempoNor_Overlap_Threshold_0.400_Masking_Reduced_10'
 
-
+# model_name = 'LSTM_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_TempoNor'
 
 # model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_Threshold_0.015_Masking_Reduced_10'
 # model_name = 'LSTM-AE_rotate_Ortho_Leaky_Temporal_InputSize_50_Seq_120_Threshold_0.030_Masking_Reduced_10'

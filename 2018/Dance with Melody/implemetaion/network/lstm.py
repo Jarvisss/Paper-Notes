@@ -55,7 +55,7 @@ class LSTM_AE(nn.Module):
     def __init__(self, input_size,output_size,reduced_size,
                  fc1_hidden_size,fc2_hidden_size,fc3_hidden_size,
                  encoder_rnn_hidden_size,decoder_rnn_hidden_size,pred_rnn_hidden_size,
-                 num_layers,with_masking ):
+                 num_layers,with_masking,is_leaky_relu ):
         super(LSTM_AE, self).__init__()
         self.acoustic_features = input_size
         self.with_masking = with_masking
@@ -65,7 +65,7 @@ class LSTM_AE(nn.Module):
         # self.rnn = nn.GRU(input_size, hidden_size, num_layers, batch_first=True, dropout=0.2)
         self.encoder_fc = nn.Sequential(
             nn.Linear(input_size, fc1_hidden_size),
-            nn.ReLU(),
+            nn.ReLU() if is_leaky_relu else nn.LeakyReLU()
         )
         self.encoder_rnn = nn.LSTM(fc1_hidden_size + self.temporal_features,encoder_rnn_hidden_size, 1, batch_first=True)
         self.encoder_fc2 = nn.Linear(encoder_rnn_hidden_size, reduced_size)
@@ -73,14 +73,14 @@ class LSTM_AE(nn.Module):
 
         self.decoder_fc = nn.Sequential(
             nn.Linear(reduced_size, fc2_hidden_size),
-            nn.ReLU(),
+            nn.ReLU() if is_leaky_relu else nn.LeakyReLU()
         )
         self.decoder_rnn=nn.LSTM(fc2_hidden_size + self.temporal_features, decoder_rnn_hidden_size, 1, batch_first=True)
         self.decoder_fc2 = nn.Linear(decoder_rnn_hidden_size, input_size)
 
         self.pred_fc = nn.Sequential(
             nn.Linear(reduced_size, fc3_hidden_size),
-            nn.ReLU(),
+            nn.ReLU() if is_leaky_relu else nn.LeakyReLU()
         )
         self.pred_rnn = nn.LSTM(fc3_hidden_size + self.temporal_features, pred_rnn_hidden_size, num_layers, batch_first=True, dropout=0.2)
         self.pred_fc2 = nn.Linear(pred_rnn_hidden_size, output_size )

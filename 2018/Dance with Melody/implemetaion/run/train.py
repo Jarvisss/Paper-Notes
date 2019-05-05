@@ -11,20 +11,23 @@ from network import lstm
 import numpy as np
 import json
 import os
+from visdom import Visdom
+from tensorboardX import SummaryWriter
+
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 torch.cuda.set_device(0)
 # is_train = True
-# continue_train = False
-continue_train = True
+continue_train = False
+# continue_train = True
 is_train = False
 
 
 if continue_train or not is_train:
-    last_epoch = 9140
+    last_epoch = 511
 model_name = 'LSTM-AE'
-threshold = 0.06
+threshold = 0.4
 # model_name = 'LSTM'
 # Feature processing
 with_tempo_normalized = True
@@ -34,6 +37,7 @@ with_centering = False
 with_leaky_relu = True
 with_ortho_init = True
 with_masking = True
+with_overlap = True
 one_sample_train = False
 
 if model_name == 'LSTM-AE':
@@ -75,7 +79,8 @@ post_fix = model_name+("_rotate" if with_rotate else "")\
            +("_OneSample" if one_sample_train else "")\
            +("_InputSize_%d" % acoustic_size)\
            +("_Seq_%d")%seq_len\
-           +("_TempoNor" if with_tempo_normalized else "")
+           +("_TempoNor" if with_tempo_normalized else "")\
+           +("_Overlap" if with_overlap else "")
 if model_name == 'LSTM-AE':
     post_fix = post_fix\
            +("_Threshold_%.3f"%threshold) \
@@ -85,6 +90,8 @@ if model_name == 'LSTM-AE':
 # print(device)
 data_dir = "../data/"
 ck_dir= "../checkpoints/" + post_fix +"/"
+log_dir = "../log/" + post_fix +"/"
+writer = SummaryWriter(log_dir)
 output_json = post_fix+'.json'
 if not os.path.exists(ck_dir):
     os.makedirs(ck_dir)
@@ -133,8 +140,6 @@ def create_model(model_name):
             device=device,
             with_tempo=with_tempo_features,
             is_leaky_relu=with_leaky_relu).to(device)
-        if with_ortho_init:
-            orthogonal_init(model.rnn)
 
         pass
 
@@ -152,18 +157,15 @@ def create_model(model_name):
             pred_rnn_hidden_size= 32,
             num_layers= 3,
             with_masking=with_masking,
+            is_leaky_relu=with_leaky_relu
         ).to(device)
-        if with_ortho_init:
-            orthogonal_init(model.encoder_rnn)
-            orthogonal_init(model.decoder_rnn)
-            orthogonal_init(model.pred_rnn)
         pass
     else:
         return
         pass
     model = model.double()
-    params = list(model.parameters())
     print(model)
+
     return model
 
 def load_valid_features(valid_dirs):
@@ -183,27 +185,21 @@ def load_valid_features(valid_dirs):
     pass
 
 def orthogonal_init(m):
-    assert isinstance(m,
-                      (
-                          nn.GRU,
-                          nn.LSTM,
-                          nn.GRUCell,
-                          nn.LSTMCell
-                      )
-                      )
-    for name, param in m.named_parameters():
-        if name.find("weight_ih") >= 0:
-            nn.init.xavier_uniform_(param)
-        elif name.find("weight_hh") >= 0:
-            nn.init.orthogonal_(param)
-        elif name.find("bias") >= 0:
-            nn.init.zeros_(param)
-        else:
-            raise NameError("unknown param {}".format(name))
+    for k in m.modules():
+        if type(k) in [nn.GRU, nn.LSTM, nn.RNN]:
+            for name, param in k.named_parameters():
+                if 'weight_ih' in name:
+                    torch.nn.init.xavier_uniform_(param.data)
+                elif 'weight_hh' in name:
+                    torch.nn.init.orthogonal_(param.data)
+                elif 'bias' in name:
+                    nn.init.zeros_(param)
+                else:
+                    raise NameError("unknown param {}".format(name))
 
 def train(acoustic_features,val_acoustic_features, motion_features,val_motion_features, temporal_features, val_temporal_features):
     model = create_model(model_name=model_name)
-
+    orthogonal_init(m=model)
 
     optimizer = optim.Adam(model.parameters(),lr = lr, betas = (beta1, beta2))
     epoch = 0
@@ -221,16 +217,30 @@ def train(acoustic_features,val_acoustic_features, motion_features,val_motion_fe
         val_acoustic_features = np.hstack((val_acoustic_features, val_temporal_features))
     # Crop the input/target and drop the no-use data
     print(acoustic_features.shape)
-    num_train_seq = int(len(acoustic_features) / seq_len)
-    acoustic_features = acoustic_features[:num_train_seq*seq_len,:].reshape(num_train_seq,seq_len,-1)
-    motion_features = motion_features[:num_train_seq*seq_len,:].reshape(num_train_seq,seq_len,-1)
-    #
-    num_val_seq = int(len(val_acoustic_features) / seq_len)
-    val_acoustic_features = val_acoustic_features[:num_val_seq * seq_len, :].reshape(num_val_seq, seq_len, -1)
-    val_motion_features = val_motion_features[:num_val_seq * seq_len, :].reshape(num_val_seq, seq_len, -1)
+    x_train = y_train=x_valid = y_valid = None
+    num_train_seq = len(acoustic_features) // seq_len
+    num_val_seq = len(val_acoustic_features) // seq_len
+    if with_overlap:
+        for i in range(num_train_seq-1):
+            for j in range(0,seq_len,5):
+                print(i*seq_len + j)
+                indices = [k for k in range(i*seq_len+j,i*seq_len+seq_len+j)]
+                x_train = acoustic_features[np.newaxis, indices] if x_train is None else np.vstack((x_train, acoustic_features[np.newaxis ,indices]))
+                y_train = motion_features[np.newaxis, indices] if y_train is None else np.vstack((y_train,motion_features[np.newaxis, indices]))
+        for i in range(num_val_seq-1):
+            for j in range(0,seq_len,5):
+                indices = [k for k in range(i*seq_len+j,i*seq_len+seq_len+j)]
+                x_valid = acoustic_features[np.newaxis, indices] if x_valid is None else np.vstack((x_valid,acoustic_features[np.newaxis, indices]))
+                y_valid = motion_features[np.newaxis, indices] if y_valid is None else np.vstack((y_valid,motion_features[np.newaxis, indices]))
+    else:
+        x_train = acoustic_features[:num_train_seq*seq_len,:].reshape(num_train_seq,seq_len,-1)
+        y_train = motion_features[:num_train_seq*seq_len,:].reshape(num_train_seq,seq_len,-1)
+        #
+        x_valid = val_acoustic_features[:num_val_seq * seq_len, :].reshape(num_val_seq, seq_len, -1)
+        y_valid = val_motion_features[:num_val_seq * seq_len, :].reshape(num_val_seq, seq_len, -1)
     # print(acoustic_features.shape)
     # x_train, x_valid, y_train, y_valid = train_test_split(acoustic_features, motion_features, shuffle=False)
-    x_train, x_valid, y_train, y_valid = acoustic_features, val_acoustic_features, motion_features, val_motion_features
+    # x_train, x_valid, y_train, y_valid = acoustic_features, val_acoustic_features, motion_features, val_motion_features
     x_train_data = torch.from_numpy(x_train)
     y_train_data = torch.from_numpy(y_train)
     x_valid_data = torch.from_numpy(x_valid)
@@ -273,6 +283,7 @@ def train(acoustic_features,val_acoustic_features, motion_features,val_motion_fe
                 )
                 loss2 = loss_pred(output[1],batch_y)
                 loss = loss1 + loss2
+                # loss = loss2
             else:
                 loss = loss_pred(output, batch_y)
             loss.backward()
@@ -294,6 +305,7 @@ def train(acoustic_features,val_acoustic_features, motion_features,val_motion_fe
                     )
                     loss5 = loss_pred(output[1], batch_y)
                     loss3 = loss4 + loss5
+                    # loss3 = loss5
                 else:
                     loss3 = loss_pred(output, batch_y)
                 epoch_valid_loss += loss3.item()
@@ -302,6 +314,8 @@ def train(acoustic_features,val_acoustic_features, motion_features,val_motion_fe
         print("epoch %d,train_AE_loss:%0.4f, train_Pred_loss:%0.4f, train_loss:%0.4f, valid_loss:%0.4f"
               % (epoch,  epoch_train_auto_loss/len(train_dataloader),epoch_train_pred_loss / len(train_dataloader),
                  epoch_train_loss/len(train_dataloader), epoch_valid_loss/len(valid_dataloader) ))
+        writer.add_scalar('Train/Loss', epoch_train_loss/len(train_dataloader), epoch)
+        writer.add_scalar('Valid/Loss', epoch_valid_loss/len(valid_dataloader), epoch)
         state = {'net':model.state_dict(), 'optimizer':optimizer.state_dict(), 'epoch':epoch}
 
         torch.save(state,f = os.path.join(ck_dir, model_name + "_epoch_%d.pth" % epoch))
@@ -339,7 +353,7 @@ def test(test_sample_dir, acoustic_features_scaler, motion_features_scaler, temp
     model.load_state_dict(checkpoint['net'])
     model.eval()
 
-    # test_dataset = TensorDataset(torch.from_numpy(test_acoustic_features[np.newaxis,:]), torch.from_numpy(test_motion_features[np.newaxis,:]))
+    # test_dataset = TensorDataset(torch.from_numpy(test_acoustic_features), torch.from_numpy(test_motion_features))
     test_dataset = TensorDataset(torch.from_numpy(test_acoustic_features[np.newaxis,]), torch.from_numpy(test_motion_features[np.newaxis,]))
     test_dataloader = DataLoader(dataset=test_dataset,
                                  batch_size=test_batch_size,

@@ -9,7 +9,8 @@ import math
 
 from sklearn.preprocessing import StandardScaler
 
-
+seq_len = 120
+with_clip = True
 """
 hyper-parameters for music data
 """
@@ -133,6 +134,11 @@ def audio_feature_extract(data_dir):
 
     acoustic_features, temporal_indexes = music.extract_features()  # 16 dim
 
+    if with_clip:
+        clipped = acoustic_features.shape[0] // seq_len * seq_len
+        acoustic_features = acoustic_features[:clipped, :]
+        temporal_indexes = temporal_indexes[:clipped,:]
+
     np.save(acoustic_features_path, acoustic_features)
     np.save(temporal_indexes_path, temporal_indexes)
 
@@ -219,7 +225,7 @@ if __name__ == '__main__':
 
     for one in C_dirs:
         one_dir = os.path.join(data_dir, one)
-        motion_features = motion_feature_extract(one_dir)
+        motion_features = motion_feature_extract(one_dir, with_centering=False, with_rotate=True)
         acoustic_features = audio_feature_extract(one_dir).transpose()  # dim 16 [n_features, n_samples]
 
         scaler = StandardScaler()
